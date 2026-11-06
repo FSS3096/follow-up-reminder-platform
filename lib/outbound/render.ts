@@ -8,4 +8,4 @@ export {
   type Language,
   type TemplateKey,
   type TemplateVars,
-} from './templates.provisional';
+} from '@/lib/messages/templates';
