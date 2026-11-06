@@ -57,3 +57,15 @@ Status: info.
 ### OQ-9 (2026-11-06, Claude Code, B0) `Brief.md` is not in the repo
 The folder structure lists `Brief.md` at the root but it is not committed. Please add it so both agents read the same version.
 Status: open (Fenil).
+
+### OQ-10 (2026-11-06, Claude Code, B3) Codex's `plan.test.ts` (C2a) not in the repo yet
+B3 was built test-first against the C2a table using co-located `lib/reminders/plan.test.ts` (all 13 cases plus
+boundaries, quiet hours and machine-TZ independence, run under UTC, Asia/Kolkata, America/Los_Angeles, Pacific/Kiritimati).
+Codex's suite stays the acceptance test; if it disagrees with this one, the brief wins and I fix the code, not the test.
+- Invalid time throws `InvalidFollowupTimeError`, a subclass of `InvalidFollowupDateError`, so `toThrow(InvalidFollowupDateError)` passes.
+Status: open (Codex).
+
+### OQ-11 (2026-11-06, Claude Code, B3) Appointments before 10:00 and the 07:00 morning floor
+`morning_of = max(07:00, T - 3h)`. For T before 07:00 (e.g. 06:30) the reminder lands after the appointment.
+Proposed: reject followupTime outside clinic hours (07:00-21:00) in the API (B4) rather than change the planner.
+Status: open, implemented as an API validation in B4 unless someone objects.
