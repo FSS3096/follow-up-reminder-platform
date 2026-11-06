@@ -56,8 +56,8 @@ describe('loadServerEnv', () => {
     expect(problemsOf({ ...valid, ALLOW_LIVE_SEND: 'true' }).join()).toMatch(/only meaningful/);
   });
 
-  it('requires GEMINI_API_KEY when the LLM parser is enabled', () => {
-    expect(problemsOf({ ...valid, ENABLE_LLM_PARSER: 'true' }).join()).toMatch(/GEMINI_API_KEY/);
+  it('refuses ENABLE_LLM_PARSER=true (not implemented in v1)', () => {
+    expect(problemsOf({ ...valid, ENABLE_LLM_PARSER: 'true', GEMINI_API_KEY: 'k' }).join()).toMatch(/not implemented/);
   });
 
   it('rejects secrets exposed with a NEXT_PUBLIC_ prefix', () => {

@@ -53,6 +53,6 @@ export function isValidBearer(header: string | null, expectedSecret: string): bo
 /** Guard for /api/cron/tick. Throws 401 on a missing or wrong bearer. */
 export function requireCronSecret(req: Request): void {
   if (!isValidBearer(req.headers.get('authorization'), getServerEnv().CRON_SECRET)) {
-    throw errors.unauthenticated();
+    throw new ApiError(401, 'UNAUTHENTICATED', 'Invalid or missing bearer token');
   }
 }
