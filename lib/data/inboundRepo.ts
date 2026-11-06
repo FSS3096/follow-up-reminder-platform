@@ -9,6 +9,7 @@ export interface InboundRepo {
   findPatientsByPhone(phoneE164: string): Promise<PatientRow[]>;
   touchInbound(patientIds: string[], at: Date): Promise<void>;
   activeFollowups(patientIds: string[]): Promise<FollowupRow[]>;
+  getFollowup(id: string): Promise<FollowupRow | null>;
   /** Conditional transition; returns false if the row was no longer in one of `from`. */
   transition(followupId: string, from: FollowupStatus[], patch: TablesUpdate<'followups'>): Promise<boolean>;
   setAttentionIfEmpty(followupId: string, reason: AttentionReason): Promise<void>;
@@ -43,6 +44,11 @@ export function createInboundRepo(db: AdminSupabaseClient): InboundRepo {
         .order('followup_date', { ascending: true });
       fail(error);
       return data ?? [];
+    },
+    async getFollowup(id) {
+      const { data, error } = await db.from('followups').select('*').eq('id', id).maybeSingle();
+      fail(error);
+      return data;
     },
     async transition(id, from, patch) {
       const { data, error } = await db.from('followups').update(patch).eq('id', id).in('status', from).select('id');

@@ -31,6 +31,10 @@ export class FakeInboundRepo implements InboundRepo {
       .filter((f) => f.patient_id && ids.includes(f.patient_id) && ['approved', 'confirmed', 'reschedule_requested'].includes(f.status))
       .map((f) => ({ ...f }));
   }
+  async getFollowup(id: string) {
+    const f = this.followups.find((x) => x.id === id);
+    return f ? { ...f } : null;
+  }
   async transition(id: string, from: FollowupRow['status'][], patch: Partial<FollowupRow>) {
     const f = this.followups.find((x) => x.id === id);
     if (!f || !from.includes(f.status)) return false;

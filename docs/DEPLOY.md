@@ -17,7 +17,11 @@ Pick one.
 
 **A. SQL editor (no CLI):** Dashboard -> SQL Editor -> run, in order and one at a time:
 `0001_init.sql`, `0002_rls.sql`, `0003_functions.sql`, `0004_followup_functions.sql`, `0005_tick_functions.sql`,
-`0006_inbound.sql` (all in `supabase/migrations/`).
+`0006_inbound.sql`, and `0007_authenticated_write_hardening.sql` (all in `supabase/migrations/`).
+
+Migration 0007 is required on existing deployments to revoke direct authenticated UPDATE access to patient and
+follow-up records. It preserves patient/draft inserts, while protected mutations continue through server-side
+operations. Run it before enabling live reminders on an existing project.
 
 **B. Supabase CLI:**
 ```bash

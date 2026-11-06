@@ -78,8 +78,14 @@ export async function handleInbound(input: InboundInput, deps: InboundDeps): Pro
 
   if (intent === 'confirm' && followup) {
     if (followup.status === 'approved') {
-      await deps.repo.transition(followup.id, ['approved'], { status: 'confirmed', confirmed_at: now.toISOString() });
-      return { intent, action: 'confirmed', reply: replyFor('reply_confirmed', patient, followup, deps) };
+      const changed = await deps.repo.transition(followup.id, ['approved'], { status: 'confirmed', confirmed_at: now.toISOString() });
+      if (changed) return { intent, action: 'confirmed', reply: replyFor('reply_confirmed', patient, followup, deps) };
+      const current = await deps.repo.getFollowup(followup.id);
+      if (current?.status === 'confirmed') return { intent, action: 'none', reply: replyFor('reply_confirmed', patient, current, deps) };
+      if (current?.status === 'reschedule_requested') {
+        return { intent, action: 'none', reply: replyFor('reply_reschedule_ack', patient, current, deps) };
+      }
+      return { intent, action: 'none', reply: null };
     }
     if (followup.status === 'confirmed') return { intent, action: 'none', reply: replyFor('reply_confirmed', patient, followup, deps) };
     // reschedule_requested: the clinic is already calling them; acknowledge that instead.
@@ -88,10 +94,17 @@ export async function handleInbound(input: InboundInput, deps: InboundDeps): Pro
 
   if (intent === 'reschedule' && followup) {
     if (followup.status !== 'reschedule_requested') {
-      await deps.repo.transition(followup.id, ['approved', 'confirmed'], {
+      const changed = await deps.repo.transition(followup.id, ['approved', 'confirmed'], {
         status: 'reschedule_requested',
         attention_reason: 'reschedule_requested',
       });
+      if (!changed) {
+        const current = await deps.repo.getFollowup(followup.id);
+        if (current?.status === 'reschedule_requested') {
+          return { intent, action: 'none', reply: replyFor('reply_reschedule_ack', patient, current, deps) };
+        }
+        return { intent, action: 'none', reply: null };
+      }
     }
     return { intent, action: 'reschedule_requested', reply: replyFor('reply_reschedule_ack', patient, followup, deps) };
   }

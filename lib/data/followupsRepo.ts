@@ -7,8 +7,9 @@ export type FollowupRow = Tables<'followups'>;
 export type PatientSummary = Pick<Tables<'patients'>, 'id' | 'name' | 'phone_e164' | 'language' | 'opted_out' | 'is_seed'>;
 export type FollowupWithPatient = FollowupRow & { patient: PatientSummary | null };
 
-export async function insertDraft(db: Client, row: TablesInsert<'followups'>): Promise<{ id: string }> {
-  const { data, error } = await db.from('followups').insert({ ...row, status: 'draft' }).select('id').single();
+export async function insertDraft(db: Client, row: Omit<TablesInsert<'followups'>, 'status' | 'parsed_at'>): Promise<{ id: string }> {
+  // status and parsed_at use database defaults; clients have no column privilege to set them.
+  const { data, error } = await db.from('followups').insert(row).select('id').single();
   if (error) throw mapDbError(error);
   return data;
 }

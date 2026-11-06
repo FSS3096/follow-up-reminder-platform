@@ -38,7 +38,8 @@ vi.mock('@/lib/data/patientsRepo', () => ({
   listForMatching: async () => [...store.patients.values()].map((p) => ({ id: p.id, name: p.name, language: p.language })),
 }));
 vi.mock('@/lib/data/followupsRepo', () => ({
-  insertDraft: async (_db: unknown, row: Record<string, unknown>) => ({ id: store.addFollowup(row).id }),
+  // The database now owns parsed_at via DEFAULT now(); mirror that behavior in this fake.
+  insertDraft: async (_db: unknown, row: Record<string, unknown>) => ({ id: store.addFollowup({ ...row, parsed_at: new Date().toISOString() }).id }),
 }));
 vi.mock('@/lib/followups/deps', async () => {
   const { sendConfirmationNow } = await import('@/lib/reminders/tick');

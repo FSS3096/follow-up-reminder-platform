@@ -112,8 +112,9 @@ messagePreview, attentionReason, clientInputMs, parsedAt, approvedAt, confirmedA
 | `0004_followup_functions.sql` | `approve_followup`, `reschedule_followup`, `set_followup_status` (authenticated) |
 | `0005_tick_functions.sql` | `recover_stuck_reminders`, `mark_missed_followups`, `claim_reminder` (service_role) |
 | `0006_inbound.sql` | `patients.last_auto_reply_at`, index on `reminders.provider_message_sid` |
+| `0007_authenticated_write_hardening.sql` | removes authenticated direct UPDATE on patients/followups; restricts insertable columns and draft ownership |
 
 ## Outbound templates seam
 
-All outbound text goes through `lib/outbound/render.ts`. It currently re-exports the provisional templates in
-`lib/outbound/templates.provisional.ts`; when Codex's `lib/messages/templates.ts` (C1) lands, change that one import.
+All outbound text goes through `lib/outbound/render.ts`, which re-exports the reviewed templates in
+`lib/messages/templates.ts`.

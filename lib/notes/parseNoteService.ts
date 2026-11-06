@@ -65,7 +65,6 @@ export async function parseNoteAndCreateDraft(
     message_preview: messagePreview,
     attention_reason: result.patientId ? null : 'unmatched_patient',
     client_input_ms: input.clientInputMs ?? null,
-    parsed_at: now.toISOString(),
   });
 
   return {

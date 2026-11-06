@@ -15,7 +15,10 @@ alter table reminders enable row level security;
 revoke all on table staff, patients, followups, reminders from anon;
 revoke all on table staff, patients, followups, reminders from authenticated;
 grant select on table staff to authenticated;
-grant select, insert, update on table patients, followups to authenticated;
+grant select on table patients, followups to authenticated;
+grant insert (name, phone_e164, language) on table patients to authenticated;
+grant insert (patient_id, patient_name_raw, doctor_id, followup_date, followup_time, raw_note, parse_source, date_source, message_preview, attention_reason, client_input_ms)
+  on table followups to authenticated;
 grant select on table reminders to authenticated;
 
 -- Helpers. SECURITY DEFINER so policies on other tables can look up staff without
@@ -47,16 +50,12 @@ create policy patients_select_staff on patients
   for select to authenticated using (is_staff());
 create policy patients_insert_staff on patients
   for insert to authenticated with check (is_staff());
-create policy patients_update_staff on patients
-  for update to authenticated using (is_staff()) with check (is_staff());
 
 -- followups (new rows from a user session are always drafts)
 create policy followups_select_staff on followups
   for select to authenticated using (is_staff());
 create policy followups_insert_staff on followups
-  for insert to authenticated with check (is_staff() and status = 'draft');
-create policy followups_update_staff on followups
-  for update to authenticated using (is_staff()) with check (is_staff());
+  for insert to authenticated with check (is_staff() and status = 'draft' and doctor_id = auth.uid());
 
 -- reminders: read-only for staff
 create policy reminders_select_staff on reminders

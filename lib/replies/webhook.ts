@@ -2,7 +2,37 @@ import { getServerEnv } from '@/lib/env';
 import { ApiError } from '@/lib/http/errors';
 import { isValidTwilioSignature } from '@/lib/http/twilioSignature';
 
-const MAX_FORM_BYTES = 32 * 1024;
+export const MAX_FORM_BYTES = 32 * 1024;
+
+async function readBodyBounded(req: Request, maxBytes: number): Promise<string> {
+  const body = req.body;
+  if (!body) return '';
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel('request body exceeds configured limit');
+        throw new ApiError(413, 'PAYLOAD_TOO_LARGE', 'Body too large');
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
 
 /**
  * Reads a Twilio webhook form body and verifies X-Twilio-Signature against
@@ -18,8 +48,12 @@ export async function readSignedTwilioForm(req: Request, path: string): Promise<
   if (!ct.toLowerCase().startsWith('application/x-www-form-urlencoded')) {
     throw new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Expected application/x-www-form-urlencoded');
   }
-  const raw = await req.text();
-  if (Buffer.byteLength(raw, 'utf8') > MAX_FORM_BYTES) throw new ApiError(413, 'PAYLOAD_TOO_LARGE', 'Body too large');
+  const contentLength = req.headers.get('content-length');
+  if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > MAX_FORM_BYTES) {
+    await req.body?.cancel('request body exceeds configured limit');
+    throw new ApiError(413, 'PAYLOAD_TOO_LARGE', 'Body too large');
+  }
+  const raw = await readBodyBounded(req, MAX_FORM_BYTES);
   const params = new URLSearchParams(raw);
   const query = new URL(req.url).search;
   const url = `${env.APP_BASE_URL}${path}${query}`;

@@ -26,21 +26,29 @@ set role authenticated; set request.jwt.claim.sub = '33333333-3333-3333-3333-333
 select 'patients', count(*) from patients; select 'followups', count(*) from followups; select 'staff', count(*) from staff;
 reset role;
 
-\echo === RECEPTIONIST: sees rows, own staff row only, cannot approve, cannot write reminders, cannot claim
+\echo === RECEPTIONIST: reads rows; direct writes to protected patients/followups and reminders are denied
 set role authenticated; set request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
 select 'followups', count(*) from followups; select 'staff', count(*) from staff;
-update followups set status='approved', raw_note=null where id='f0000000-0000-0000-0000-000000000001';
+select has_table_privilege('authenticated', 'patients', 'UPDATE') as patient_table_update_must_be_false;
+select has_table_privilege('authenticated', 'followups', 'UPDATE') as followup_table_update_must_be_false;
+select has_column_privilege('authenticated', 'patients', 'opted_out', 'UPDATE') as opted_out_update_must_be_false;
+select has_column_privilege('authenticated', 'patients', 'is_seed', 'UPDATE') as patient_seed_update_must_be_false;
+select has_column_privilege('authenticated', 'followups', 'confirmed_at', 'UPDATE') as confirmation_timestamp_update_must_be_false;
+select has_column_privilege('authenticated', 'patients', 'is_seed', 'INSERT') as patient_seed_insert_must_be_false;
+select has_column_privilege('authenticated', 'followups', 'parsed_at', 'INSERT') as parsed_at_insert_must_be_false;
+update patients set opted_out=false, is_seed=false, phone_e164='+919812345678' where id='aaaaaaaa-0000-0000-0000-000000000001'; -- EXPECT ERROR
+insert into patients (name, phone_e164, is_seed) values ('Fake Seed', '+910000000099', true); -- EXPECT ERROR
+update followups set confirmed_at=now(), client_input_ms=0 where id='f0000000-0000-0000-0000-000000000001'; -- EXPECT ERROR
 update reminders set status='sent';
 select claim_due_reminders(1);
-insert into followups (patient_name_raw,doctor_id,followup_date,date_source,status) values ('X','11111111-1111-1111-1111-111111111111','2026-11-11','default','approved');
+insert into followups (patient_name_raw,doctor_id,followup_date,date_source,status) values ('X','11111111-1111-1111-1111-111111111111','2026-11-11','default','approved'); -- EXPECT ERROR
 reset role;
 
-\echo === DOCTOR: approve without nulling raw_note fails, with null succeeds, illegal jump fails
+\echo === DOCTOR: direct updates to lifecycle, metrics and ownership fields are denied
 set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
-update followups set status='approved' where id='f0000000-0000-0000-0000-000000000001';
-update followups set status='approved', raw_note=null, approved_at=now() where id='f0000000-0000-0000-0000-000000000001';
-update followups set status='draft' where id='f0000000-0000-0000-0000-000000000001';
-update followups set doctor_id='22222222-2222-2222-2222-222222222222' where id='f0000000-0000-0000-0000-000000000001';
+update followups set status='approved' where id='f0000000-0000-0000-0000-000000000001'; -- EXPECT ERROR
+update followups set approved_at=now(), confirmed_at=now(), completed_at=now(), missed_at=now(), client_input_ms=600000 where id='f0000000-0000-0000-0000-000000000001'; -- EXPECT ERROR
+update followups set doctor_id='22222222-2222-2222-2222-222222222222' where id='f0000000-0000-0000-0000-000000000001'; -- EXPECT ERROR
 select status, raw_note is null as note_nulled from followups;
 reset role;
 

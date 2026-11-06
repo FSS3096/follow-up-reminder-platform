@@ -43,8 +43,8 @@ describe('parseNoteAndCreateDraft', () => {
       parse_source: 'rules',
       client_input_ms: 4200,
       attention_reason: null,
-      parsed_at: NOW.toISOString(),
     });
+    expect(inserted[0]).not.toHaveProperty('parsed_at');
   });
 
   it('unmatched patient: draft flagged unmatched_patient, Hinglish preview by default', async () => {
