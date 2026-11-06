@@ -6,7 +6,9 @@ import { WaLinkProvider } from './waLink';
 
 export * from './types';
 export { checkSendGuards, SEED_PHONE, ACTIVE_STATUSES } from './guards';
-export { buildWaLink } from './waLink';
+export { buildWaLink, WaLinkProvider } from './waLink';
+export { ConsoleProvider } from './consoleProvider';
+export { TwilioSandboxProvider } from './twilioSandbox';
 
 export function createProvider(env: ServerEnv): WhatsAppProvider {
   switch (env.MESSAGE_PROVIDER) {

@@ -109,8 +109,9 @@ export async function processReminder(r: ReminderRow, ctx: ReminderContext | und
       deps.clinic,
     );
 
+    let sid: string;
     try {
-      const { sid } = await provider.send({
+      ({ sid } = await provider.send({
         toE164: patient.phone_e164,
         body,
         lastInboundAt: patient.last_inbound_at ? new Date(patient.last_inbound_at) : null,
@@ -118,10 +119,7 @@ export async function processReminder(r: ReminderRow, ctx: ReminderContext | und
           date: formatDateLong(followup.followup_date),
           time: followupTime ? formatTime12h(followupTime) : 'during clinic hours',
         },
-      });
-      await repo.markSent(r.id, provider.name, sid, now);
-      log.info('reminder_sent', { reminderId: r.id, kind: r.kind, provider: provider.name, to: patient.phone_e164 });
-      return 'sent';
+      }));
     } catch (err) {
       if (err instanceof ManualSendRequired) {
         await repo.markSkipped(r.id, 'manual_send');
@@ -138,6 +136,15 @@ export async function processReminder(r: ReminderRow, ctx: ReminderContext | und
       log.error('reminder_failed', { reminderId: r.id, attempts: r.attempts, error: text });
       return 'failed';
     }
+
+    // The message is out. Never route a bookkeeping failure into the retry path (that would double-send).
+    try {
+      await repo.markSent(r.id, provider.name, sid, now);
+    } catch (err) {
+      log.error('reminder_mark_sent_failed', { reminderId: r.id, sid, err });
+    }
+    log.info('reminder_sent', { reminderId: r.id, kind: r.kind, provider: provider.name, to: patient.phone_e164 });
+    return 'sent';
   } catch (err) {
     // A DB write failed. The row stays 'sending' and recoverStuck() picks it up after 10 minutes.
     log.error('reminder_process_error', { reminderId: r.id, err });

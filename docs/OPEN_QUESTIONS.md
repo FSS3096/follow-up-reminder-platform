@@ -115,3 +115,20 @@ Status: info.
 - A reminder a tick is currently sending is left alone.
 - A `missed` followup cannot be rescheduled (state machine). Receptionists will want this; see OQ-6.
 Status: open.
+
+### OQ-19 (2026-11-06, Claude Code, B5/B6) Provider and tick behaviour beyond the brief
+- `OutboundMessage.lastInboundAt` added so the sandbox provider can pick free-form vs template (CONTRACTS.md).
+- Twilio is called over REST with `fetch` (no SDK dependency). Permanent Twilio errors (e.g. 21211 invalid number,
+  63016 outside window) fail immediately; 429/5xx/network/timeouts retry (10 min x attempt, max 3).
+- `wa_link` provider never sends: the tick marks the reminder `skipped/manual_send`; the list view has the link.
+- Send guard 4 is per kind: confirmation only while `approved`; day_before/morning_of while `approved|confirmed`
+  (not `reschedule_requested`, the date is about to change); missed_nudge only while `missed`.
+- Reminders that are too late to make sense (tick down for a day) are skipped as `too_late` instead of sending
+  "aaj aapka follow-up hai" a day late.
+- In quiet hours claimed reminders are deferred to 07:30 without spending an attempt.
+- If a send succeeds but recording it fails, the row stays `sending` (never re-queued by the tick). Recovery after
+  10 minutes can then resend once: a rare duplicate is preferred over a lost reminder. Flagging in case the team
+  prefers the opposite.
+- `/api/cron/tick` also answers GET (Vercel cron sends GET with the same bearer) and returns two extra counters,
+  `deferred` and `retried`.
+Status: open for review.
