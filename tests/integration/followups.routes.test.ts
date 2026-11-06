@@ -130,7 +130,7 @@ describe('/api/patients', () => {
   it('POST creates with a sanitised name, 201', async () => {
     insertPatient.mockImplementation(async (_db, input) => ({
       id: 'p1', name: input.name, phone_e164: input.phoneE164, language: input.language, opted_out: false,
-      last_inbound_at: null, is_seed: false, created_at: 'now',
+      last_inbound_at: null, last_auto_reply_at: null, is_seed: false, created_at: 'now',
     }));
     const res = await patients.POST(json({ name: ' sita <i>verma</i> ', phoneE164: '+919800000001' }), {});
     expect(res.status).toBe(201);
