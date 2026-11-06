@@ -139,6 +139,34 @@ export type Database = {
         Args: { batch_size?: number };
         Returns: ReminderRow[];
       };
+      approve_followup: {
+        Args: {
+          p_followup_id: string;
+          p_patient_id: string | null;
+          p_new_patient_name: string | null;
+          p_new_patient_phone: string | null;
+          p_new_patient_language: string | null;
+          p_followup_date: string;
+          p_followup_time: string | null;
+          p_message_preview: string;
+          p_reminders: Json;
+        };
+        Returns: FollowupRow;
+      };
+      reschedule_followup: {
+        Args: {
+          p_followup_id: string;
+          p_followup_date: string;
+          p_followup_time: string | null;
+          p_message_preview: string;
+          p_reminders: Json;
+        };
+        Returns: FollowupRow;
+      };
+      set_followup_status: {
+        Args: { p_followup_id: string; p_status: FollowupStatus };
+        Returns: FollowupRow;
+      };
       is_staff: {
         Args: never;
         Returns: boolean;
