@@ -132,3 +132,15 @@ Status: open.
 - `/api/cron/tick` also answers GET (Vercel cron sends GET with the same bearer) and returns two extra counters,
   `deferred` and `retried`.
 Status: open for review.
+
+### OQ-20 (2026-11-06, Claude Code, B7) Inbound decisions
+- Schema addition: `patients.last_auto_reply_at` (0006). The 6 h out-of-scope limit must survive serverless cold
+  starts; it stores a timestamp only. Unknown numbers fall back to an in-memory limiter.
+- "Latest active followup" = the soonest upcoming active one (date >= today), else the most recent active one.
+- "2" is accepted from `approved` and `confirmed` (the diagram only shows `approved`; a confirmed patient who then
+  cannot come must be able to say so). Raised in OQ-6.
+- "1" while `reschedule_requested` does not undo the request; the patient gets the reschedule ack again.
+- STOP opts out every patient sharing that phone (it is the phone owner asking).
+- `patient_message` attention never overwrites `send_failed` / `reschedule_requested`.
+- Webhooks return 403 if `TWILIO_AUTH_TOKEN` is not set, instead of accepting unsigned input.
+Status: open for review.
