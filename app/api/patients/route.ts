@@ -32,7 +32,8 @@ const querySchema = z
 export const GET = withErrorHandling('patients.list', async (req: Request) => {
   const staff = await requireStaff();
   const { q, limit } = parseQuery(req, querySchema);
-  const term = q ? sanitizeName(q) : undefined;
+  // Wildcards are escaped in the repo; the value is sent as a bound filter, never as SQL.
+  const term = q?.trim();
   const rows = await searchPatients(staff.supabase, term || undefined, limit);
   return NextResponse.json({ items: rows.map(toPatientDto) }, { headers: { 'Cache-Control': 'no-store' } });
 });

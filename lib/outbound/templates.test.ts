@@ -96,7 +96,7 @@ describe('buildMessage', () => {
       { patientName: '<b>Ramesh</b>', language: 'english', followupDate: '2026-11-11', followupTime: null },
       { clinicName: `{x}${'A'.repeat(100)}`, doctorName: 'Dr\nX' },
     );
-    expect(vars.patient_first_name).toBe('B');
+    expect(vars.patient_first_name).toBe('Ramesh');
     expect(vars.clinic_name).not.toMatch(/[{}]/);
     expect(vars.clinic_name.length).toBeLessThanOrEqual(60);
     expect(vars.doctor_name).toBe('Dr X');

@@ -68,7 +68,8 @@ Status: open (Codex).
 ### OQ-11 (2026-11-06, Claude Code, B3) Appointments before 10:00 and the 07:00 morning floor
 `morning_of = max(07:00, T - 3h)`. For T before 07:00 (e.g. 06:30) the reminder lands after the appointment.
 Proposed: reject followupTime outside clinic hours (07:00-21:00) in the API (B4) rather than change the planner.
-Status: open, implemented as an API validation in B4 unless someone objects.
+Status: open. NOT enforced in B4 after all: rejecting a parsed time at approve would block the doctor's one tap (rule 1).
+The planner keeps the spec formula; the team should decide whether times before 07:00 are possible at all.
 
 ### OQ-12 (2026-11-06, Claude Code, B2) Templates: Codex's C1 not in the repo yet
 Outbound text must come from `renderTemplate`, but `lib/messages/templates.ts` (Codex) does not exist.
@@ -99,3 +100,18 @@ Stricter than section 3 ("raw_note"), same column. Status: info.
 - "N baje" without am/pm: 1-7 is read as PM (clinic hours), 8-12 as written.
 - Durations over 400 days and explicit dates with a past year are ignored (default date + `date_ambiguous`).
 Status: open for Codex's C2b tests to confirm.
+
+### OQ-17 (2026-11-06, Claude Code, B4) Approve / reschedule / status are SQL functions
+`supabase/migrations/0004_followup_functions.sql`. supabase-js has no transactions, so each write is one
+`security definer` function (row lock, state check, reminders written in the same transaction). The reminder plan is
+still computed by the pure TS planner and passed in as JSON; the function validates it (no `missed_nudge`, only
+pending/skipped). Errors use custom SQLSTATEs `QN404/QN409/QN422` mapped in `lib/data/dbErrors.ts`.
+Status: info.
+
+### OQ-18 (2026-11-06, Claude Code, B4) Reschedule details
+- `followupTime` omitted on reschedule means "no time" (null), not "keep the old time".
+- Reschedule from `confirmed` goes back to `approved` (patient must confirm the new date); `confirmed_at` is cleared.
+- The confirmation reminder is re-sent for the new date (it is part of the re-plan).
+- A reminder a tick is currently sending is left alone.
+- A `missed` followup cannot be rescheduled (state machine). Receptionists will want this; see OQ-6.
+Status: open.
