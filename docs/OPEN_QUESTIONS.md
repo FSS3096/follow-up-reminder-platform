@@ -115,3 +115,32 @@ Status: info.
 - A reminder a tick is currently sending is left alone.
 - A `missed` followup cannot be rescheduled (state machine). Receptionists will want this; see OQ-6.
 Status: open.
+
+### OQ-19 (2026-11-06, Claude Code, B5/B6) Provider and tick behaviour beyond the brief
+- `OutboundMessage.lastInboundAt` added so the sandbox provider can pick free-form vs template (CONTRACTS.md).
+- Twilio is called over REST with `fetch` (no SDK dependency). Permanent Twilio errors (e.g. 21211 invalid number,
+  63016 outside window) fail immediately; 429/5xx/network/timeouts retry (10 min x attempt, max 3).
+- `wa_link` provider never sends: the tick marks the reminder `skipped/manual_send`; the list view has the link.
+- Send guard 4 is per kind: confirmation only while `approved`; day_before/morning_of while `approved|confirmed`
+  (not `reschedule_requested`, the date is about to change); missed_nudge only while `missed`.
+- Reminders that are too late to make sense (tick down for a day) are skipped as `too_late` instead of sending
+  "aaj aapka follow-up hai" a day late.
+- In quiet hours claimed reminders are deferred to 07:30 without spending an attempt.
+- If a send succeeds but recording it fails, the row stays `sending` (never re-queued by the tick). Recovery after
+  10 minutes can then resend once: a rare duplicate is preferred over a lost reminder. Flagging in case the team
+  prefers the opposite.
+- `/api/cron/tick` also answers GET (Vercel cron sends GET with the same bearer) and returns two extra counters,
+  `deferred` and `retried`.
+Status: open for review.
+
+### OQ-20 (2026-11-06, Claude Code, B7) Inbound decisions
+- Schema addition: `patients.last_auto_reply_at` (0006). The 6 h out-of-scope limit must survive serverless cold
+  starts; it stores a timestamp only. Unknown numbers fall back to an in-memory limiter.
+- "Latest active followup" = the soonest upcoming active one (date >= today), else the most recent active one.
+- "2" is accepted from `approved` and `confirmed` (the diagram only shows `approved`; a confirmed patient who then
+  cannot come must be able to say so). Raised in OQ-6.
+- "1" while `reschedule_requested` does not undo the request; the patient gets the reschedule ack again.
+- STOP opts out every patient sharing that phone (it is the phone owner asking).
+- `patient_message` attention never overwrites `send_failed` / `reschedule_requested`.
+- Webhooks return 403 if `TWILIO_AUTH_TOKEN` is not set, instead of accepting unsigned input.
+Status: open for review.

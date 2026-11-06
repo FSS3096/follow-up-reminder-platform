@@ -77,3 +77,43 @@ Migrations `supabase/migrations/0001-0003` implement Brief section 3 exactly, pl
 | `followups` insert policy requires `status = 'draft'` | User sessions can only create drafts |
 | `followups_user_update_guard` trigger (role `authenticated` only) | State machine, doctor-only approve, immutable columns, `raw_note` null outside draft |
 | `grant execute on claim_due_reminders to service_role` | Explicit, since `public` was revoked |
+
+## API changes vs Brief section 4 (B2-B10)
+
+| Endpoint | Change | Why |
+|----------|--------|-----|
+| `POST /api/notes/parse` | Role **doctor** (was "staff"). 429 `RATE_LIMITED` after 30/min per user. | OQ-13 |
+| `POST /api/followups/:id/approve` | Body is `.strict()`; `patientId` and `newPatient` are mutually exclusive; `followupTime: null` clears the time. 422 codes: `PATIENT_NEEDS_PHONE`, `PATIENT_NOT_FOUND`, `INVALID_FOLLOWUP_DATE`. | |
+| `POST /api/followups/:id/reschedule` | Omitted `followupTime` = no time. 409 unless status is approved / confirmed / reschedule_requested. | OQ-18 |
+| `GET /api/followups` | `status` accepts a comma list. `attention=true` = attention_reason set OR status missed, excluding completed/cancelled. Items carry `patient` and `waLink` (null for opted-out, draft, closed). Opaque `cursor`. | |
+| `GET /api/patients` | `?q=&limit=` (prefix, case-insensitive). `POST` returns 201 `{ patient }`, 409 on duplicate phone+name. | |
+| `GET /api/stats` | `?range=7d|30d|90d|all&includeSeed=false`. Response `{ range, includeSeed, generatedAt, measured, modeled }`. | B8 |
+| `POST|GET /api/cron/tick` | GET added for the Vercel cron backstop. Two extra counters: `deferred`, `retried`. | OQ-19 |
+| `POST /api/webhooks/twilio/inbound` | 403 `INVALID_SIGNATURE` on bad/missing signature or when Twilio is not configured. 415 for non-form bodies. | |
+| `POST /api/webhooks/twilio/status` | Implemented (P1): failed/undelivered -> reminder failed + `send_failed`. 204. | |
+| any `/api/*` | Cross-origin requests and cross-site writes get 403 `FORBIDDEN` (middleware). Unknown paths 404 JSON. | B10 |
+
+### Response DTOs
+
+`followup`: `id, patientId, patientNameRaw, doctorId, followupDate, followupTime (HH:mm), status, parseSource, dateSource,
+messagePreview, attentionReason, clientInputMs, parsedAt, approvedAt, confirmedAt, completedAt, missedAt, isSeed, createdAt`.
+`raw_note` is never returned by any endpoint.
+
+`reminder`: `id, kind, scheduledFor, status, attempts, provider, skipReason, sentAt`. `last_error` is not exposed.
+
+## Provider interface addition
+
+`OutboundMessage.lastInboundAt?: Date | null`: lets `twilio_sandbox` choose free-form (inside 24 h) vs template.
+
+## Schema additions after B1
+
+| Migration | Adds |
+|-----------|------|
+| `0004_followup_functions.sql` | `approve_followup`, `reschedule_followup`, `set_followup_status` (authenticated) |
+| `0005_tick_functions.sql` | `recover_stuck_reminders`, `mark_missed_followups`, `claim_reminder` (service_role) |
+| `0006_inbound.sql` | `patients.last_auto_reply_at`, index on `reminders.provider_message_sid` |
+
+## Outbound templates seam
+
+All outbound text goes through `lib/outbound/render.ts`. It currently re-exports the provisional templates in
+`lib/outbound/templates.provisional.ts`; when Codex's `lib/messages/templates.ts` (C1) lands, change that one import.
