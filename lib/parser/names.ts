@@ -9,6 +9,7 @@ const MAX_CANDIDATES = 5;
 export function sanitizeName(input: string): string {
   const cleaned = input
     .normalize('NFKC')
+    .replace(/<[^>]*>/g, ' ')
     .replace(/’/g, "'")
     .replace(/[^\p{L}\p{M}\s'-]/gu, ' ')
     .replace(/\s+/g, ' ')

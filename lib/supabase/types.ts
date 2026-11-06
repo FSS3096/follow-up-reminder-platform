@@ -37,6 +37,7 @@ type PatientRow = {
   language: PatientLanguage;
   opted_out: boolean;
   last_inbound_at: string | null;
+  last_auto_reply_at: string | null;
   is_seed: boolean;
   created_at: string;
 }
@@ -137,6 +138,46 @@ export type Database = {
     Functions: {
       claim_due_reminders: {
         Args: { batch_size?: number };
+        Returns: ReminderRow[];
+      };
+      approve_followup: {
+        Args: {
+          p_followup_id: string;
+          p_patient_id: string | null;
+          p_new_patient_name: string | null;
+          p_new_patient_phone: string | null;
+          p_new_patient_language: string | null;
+          p_followup_date: string;
+          p_followup_time: string | null;
+          p_message_preview: string;
+          p_reminders: Json;
+        };
+        Returns: FollowupRow;
+      };
+      reschedule_followup: {
+        Args: {
+          p_followup_id: string;
+          p_followup_date: string;
+          p_followup_time: string | null;
+          p_message_preview: string;
+          p_reminders: Json;
+        };
+        Returns: FollowupRow;
+      };
+      set_followup_status: {
+        Args: { p_followup_id: string; p_status: FollowupStatus };
+        Returns: FollowupRow;
+      };
+      recover_stuck_reminders: {
+        Args: { p_older_than?: string; p_max_attempts?: number };
+        Returns: number;
+      };
+      mark_missed_followups: {
+        Args: { p_cutoff: string; p_nudge_at: string };
+        Returns: number;
+      };
+      claim_reminder: {
+        Args: { p_followup_id: string; p_kind: ReminderKind };
         Returns: ReminderRow[];
       };
       is_staff: {

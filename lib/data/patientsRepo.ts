@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, PatientLanguage, Tables } from '@/lib/supabase/types';
+import { mapDbError } from './dbErrors';
 
 type Client = SupabaseClient<Database>;
 export type PatientRow = Tables<'patients'>;
@@ -18,13 +19,13 @@ export async function listForMatching(db: Client): Promise<PatientForMatching[]>
     .select('id, name, language')
     .order('created_at', { ascending: false })
     .limit(MATCHING_LIMIT);
-  if (error) throw error;
+  if (error) throw mapDbError(error);
   return data ?? [];
 }
 
 export async function getPatient(db: Client, id: string): Promise<PatientRow | null> {
   const { data, error } = await db.from('patients').select('*').eq('id', id).maybeSingle();
-  if (error) throw error;
+  if (error) throw mapDbError(error);
   return data;
 }
 
@@ -37,7 +38,7 @@ export async function searchPatients(db: Client, q: string | undefined, limit: n
   let query = db.from('patients').select('*').order('name', { ascending: true }).limit(limit);
   if (q) query = query.ilike('name', `${escapeLike(q)}%`);
   const { data, error } = await query;
-  if (error) throw error;
+  if (error) throw mapDbError(error);
   return data ?? [];
 }
 
@@ -50,13 +51,13 @@ export async function insertPatient(
     .insert({ name: input.name, phone_e164: input.phoneE164, language: input.language })
     .select('*')
     .single();
-  if (error) throw error;
+  if (error) throw mapDbError(error);
   return data;
 }
 
 /** All patients sharing a phone (families share phones). Server jobs only. */
 export async function findByPhone(db: Client, phoneE164: string): Promise<PatientRow[]> {
   const { data, error } = await db.from('patients').select('*').eq('phone_e164', phoneE164);
-  if (error) throw error;
+  if (error) throw mapDbError(error);
   return data ?? [];
 }

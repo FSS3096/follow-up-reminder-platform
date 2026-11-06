@@ -241,7 +241,7 @@ describe('parseNote: names', () => {
 
 describe('sanitizeName', () => {
   it.each([
-    ['Ramesh<script>alert(1)</script>', 'Ramesh Script Alert Script'],
+    ['Ramesh<script>alert(1)</script>', 'Ramesh Alert'],
     ["D'Souza", "D'souza"],
     ['Anne-Marie', 'Anne-marie'],
     ['  rAm   kUMAR ', 'Ram Kumar'],
