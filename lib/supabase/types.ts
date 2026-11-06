@@ -167,6 +167,18 @@ export type Database = {
         Args: { p_followup_id: string; p_status: FollowupStatus };
         Returns: FollowupRow;
       };
+      recover_stuck_reminders: {
+        Args: { p_older_than?: string; p_max_attempts?: number };
+        Returns: number;
+      };
+      mark_missed_followups: {
+        Args: { p_cutoff: string; p_nudge_at: string };
+        Returns: number;
+      };
+      claim_reminder: {
+        Args: { p_followup_id: string; p_kind: ReminderKind };
+        Returns: ReminderRow[];
+      };
       is_staff: {
         Args: never;
         Returns: boolean;
