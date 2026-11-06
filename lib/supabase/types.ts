@@ -37,6 +37,7 @@ type PatientRow = {
   language: PatientLanguage;
   opted_out: boolean;
   last_inbound_at: string | null;
+  last_auto_reply_at: string | null;
   is_seed: boolean;
   created_at: string;
 }

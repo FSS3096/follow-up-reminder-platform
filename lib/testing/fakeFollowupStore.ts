@@ -24,6 +24,7 @@ export function makePatient(over: Partial<PatientRow> = {}): PatientRow {
     language: 'hinglish',
     opted_out: false,
     last_inbound_at: null,
+    last_auto_reply_at: null,
     is_seed: false,
     created_at: '2026-11-01T00:00:00Z',
     ...over,
