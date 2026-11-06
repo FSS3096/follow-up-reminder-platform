@@ -138,3 +138,50 @@ reset role;
 set role authenticated;
 select _write_planned_reminders('f4000000-0000-0000-0000-000000000002', '[]');
 reset role;
+
+-- ===== 0005 tick functions =====
+\echo === 0005 setup
+reset role;
+delete from reminders; delete from followups;
+insert into followups (id,patient_id,patient_name_raw,doctor_id,followup_date,date_source,status) values
+ ('f5000000-0000-0000-0000-000000000001','aaaaaaaa-0000-0000-0000-000000000001','Old','11111111-1111-1111-1111-111111111111',current_date - 3,'relative','approved'),
+ ('f5000000-0000-0000-0000-000000000002','aaaaaaaa-0000-0000-0000-000000000001','Conf','11111111-1111-1111-1111-111111111111',current_date - 2,'relative','confirmed'),
+ ('f5000000-0000-0000-0000-000000000003','aaaaaaaa-0000-0000-0000-000000000001','Grace','11111111-1111-1111-1111-111111111111',current_date - 1,'relative','approved'),
+ ('f5000000-0000-0000-0000-000000000004','aaaaaaaa-0000-0000-0000-000000000001','Done','11111111-1111-1111-1111-111111111111',current_date - 5,'relative','completed'),
+ ('f5000000-0000-0000-0000-000000000005','aaaaaaaa-0000-0000-0000-000000000001','Future','11111111-1111-1111-1111-111111111111',current_date + 2,'relative','approved');
+insert into reminders (followup_id,kind,scheduled_for,status) values
+ ('f5000000-0000-0000-0000-000000000001','morning_of',now() + interval '1 day','pending'),
+ ('f5000000-0000-0000-0000-000000000005','confirmation',now() - interval '1 min','pending'),
+ ('f5000000-0000-0000-0000-000000000005','day_before',now() + interval '1 day','pending');
+insert into reminders (followup_id,kind,scheduled_for,status,attempts,claimed_at) values
+ ('f5000000-0000-0000-0000-000000000003','confirmation',now() - interval '1 hour','sending',1,now() - interval '20 min'),
+ ('f5000000-0000-0000-0000-000000000003','day_before',now() - interval '1 hour','sending',3,now() - interval '20 min'),
+ ('f5000000-0000-0000-0000-000000000003','morning_of',now() - interval '1 hour','sending',1,now() - interval '2 min');
+
+set role service_role;
+\echo === recover stuck: 2 rows (one back to pending, one failed at 3 attempts), fresh one untouched
+select recover_stuck_reminders() as recovered;
+select kind, status from reminders where followup_id = 'f5000000-0000-0000-0000-000000000003' order by kind;
+select attention_reason from followups where id = 'f5000000-0000-0000-0000-000000000003';
+
+\echo === mark missed with cutoff = current_date - 1: Old and Conf only
+select mark_missed_followups(current_date - 1, now() + interval '1 hour') as marked;
+select patient_name_raw, status, missed_at is not null as has_missed_at from followups order by patient_name_raw;
+select f.patient_name_raw, r.kind, r.status from reminders r join followups f on f.id = r.followup_id
+ where f.status = 'missed' order by 1, 2;
+\echo === second run marks nothing and adds no nudge
+select mark_missed_followups(current_date - 1, now() + interval '1 hour') as marked_again;
+select count(*) as nudges from reminders where kind = 'missed_nudge';
+
+\echo === claim_reminder: due confirmation claimed once, not-due day_before not claimed
+select kind, status, attempts from claim_reminder('f5000000-0000-0000-0000-000000000005', 'confirmation');
+select count(*) as second_claim from claim_reminder('f5000000-0000-0000-0000-000000000005', 'confirmation');
+select count(*) as not_due from claim_reminder('f5000000-0000-0000-0000-000000000005', 'day_before');
+reset role;
+
+\echo === authenticated cannot call tick functions (EXPECT ERROR x3)
+set role authenticated; set request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select recover_stuck_reminders();
+select mark_missed_followups(current_date, now());
+select claim_reminder('f5000000-0000-0000-0000-000000000005', 'confirmation');
+reset role;
