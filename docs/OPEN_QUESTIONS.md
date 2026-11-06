@@ -69,3 +69,33 @@ Status: open (Codex).
 `morning_of = max(07:00, T - 3h)`. For T before 07:00 (e.g. 06:30) the reminder lands after the appointment.
 Proposed: reject followupTime outside clinic hours (07:00-21:00) in the API (B4) rather than change the planner.
 Status: open, implemented as an API validation in B4 unless someone objects.
+
+### OQ-12 (2026-11-06, Claude Code, B2) Templates: Codex's C1 not in the repo yet
+Outbound text must come from `renderTemplate`, but `lib/messages/templates.ts` (Codex) does not exist.
+**Default:** `lib/outbound/templates.provisional.ts` (Claude Code owned) implements the exact 6.2 interface with the
+Brief's seed copy and passes the same lint rules (tests in `lib/outbound/templates.test.ts`).
+`lib/outbound/render.ts` is the single seam: switching to Codex's file is one import. Changes vs seed copy:
+`morning_of` gained the 1/2 reply instruction (rule "every reminder ends with the 1/2 instruction"); `reply_confirmed`,
+`reply_reschedule_ack`, `optout_ack` had no seed text and were written admin-only. Status: open (Codex).
+
+### OQ-13 (2026-11-06, Claude Code, B2) `POST /api/notes/parse` is doctor-only in v1 (contract said "staff")
+`followups.doctor_id` must reference the doctor, and a receptionist cannot see other staff rows under RLS. Since
+approve is doctor-only as well (section 13 Q2), parse requires role `doctor`; a receptionist gets 403.
+Status: open, revisit together with section 13 Q2.
+
+### OQ-14 (2026-11-06, Claude Code, B2) What is stored in `raw_note`
+Only the clinically stripped note (`sanitizedNote`) is stored, never the text as typed, and approve nulls it.
+Stricter than section 3 ("raw_note"), same column. Status: info.
+
+### OQ-15 (2026-11-06, Claude Code, B2) LLM fallback (L4) is not built
+`ENABLE_LLM_PARSER=true` is rejected at boot with "not implemented in v1" instead of being silently ignored.
+`chrono-node` was not used: the rules parser covers the Brief's English phrases directly, with tests. Status: info.
+
+### OQ-16 (2026-11-06, Claude Code, B2) Parser decisions worth a look
+- Two or more patients scoring >= 0.85 is always `name_ambiguous` (never auto-picked), even if one is an exact match:
+  a wrong match sends a reminder to the wrong family.
+- A one-word name ("Sita") can match a unique "Sita Verma" (score capped at 0.9).
+- Several date phrases: the one followed by "baad"/"later" wins, else the last one; `date_ambiguous` is set.
+- "N baje" without am/pm: 1-7 is read as PM (clinic hours), 8-12 as written.
+- Durations over 400 days and explicit dates with a past year are ignored (default date + `date_ambiguous`).
+Status: open for Codex's C2b tests to confirm.

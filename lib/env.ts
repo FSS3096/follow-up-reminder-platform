@@ -110,8 +110,9 @@ export const serverEnvSchema = publicEnvSchema
         message: 'only meaningful with MESSAGE_PROVIDER=twilio_sandbox; leave it false otherwise',
       });
     }
-    if (env.ENABLE_LLM_PARSER && !env.GEMINI_API_KEY) {
-      ctx.addIssue({ code: 'custom', path: ['GEMINI_API_KEY'], message: 'required when ENABLE_LLM_PARSER=true' });
+    if (env.ENABLE_LLM_PARSER) {
+      // The optional LLM fallback (Brief 6.1 L4) is not built in v1; refuse rather than silently ignore.
+      ctx.addIssue({ code: 'custom', path: ['ENABLE_LLM_PARSER'], message: 'LLM parser is not implemented in v1; set false' });
     }
     if (env.NODE_ENV === 'production' && !env.APP_BASE_URL.startsWith('https://')) {
       ctx.addIssue({ code: 'custom', path: ['APP_BASE_URL'], message: 'must be https in production (Twilio signature check)' });
